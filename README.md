@@ -1,138 +1,234 @@
 # Playwright Python Testing Framework
 
-A modular, pytest-based Playwright framework for testing React applications (or any web apps) in Python.  
-This framework includes support for:
+A modular, pytest-based **Playwright (Python)** framework for web UI testing.
 
-* **Page Object Model** (POM) for clean, maintainable test code
-* **Data-driven testing** via JSON fixtures
-* **Visual regression** with baseline snapshots and automatic diffs
-* **Screenshots & videos** on failures for easier debugging
-* **Environment configuration** using `.env` files
-* **Authenticated session reuse** using Playwright's `storageState`
-* **HTML & JUnit reporting** via `pytest-html` and JUnit XML
-* **Optional Allure reporting** for advanced dashboards
-* **CLI & CI integration** with GitHub Actions and GitHub Pages
-
----
-x
-## 🚀 Getting Started
-
-Follow these steps to set up and verify that the framework is working correctly on your machine.
-
-### ✅ Prerequisites
-
-- Python 3.8 or later installed
-- Git installed
-- Google Chrome or Chromium installed
-- Node.js (optional, for Git hooks with Husky)
+This repo is set up so that a new user can:
+1) **Sign up once** on the demo page,  
+2) Automatically **save credentials to `.env`** and the **session to `auth/storage_state.json`**, and  
+3) **Reuse the logged-in session** on every test run — no login code inside tests.
 
 ---
 
-### 🪜 Step-by-Step Setup
+## ✅ What’s Included
 
-#### 1. **Clone the Repository**
-This copies the framework into your machine.
+- **Page Object Model (POM)** for clean, maintainable tests  
+- **Signup-first flow** that persists credentials + session  
+- **Global fixtures** via `conftest.py` (one place to manage browser/context/page)  
+- **Sample tests** to verify setup  
+- **HTML/JUnit reports** (via `pytest-html`, JUnit XML)  
+- **CI-friendly** configuration (pytest, reports)  
 
+> Tested against **pytest 8+** and **Playwright 1.45+**.
+
+---
+
+## 🧭 First-Time Setup — Step by Step (with explanations)
+
+### 0) Clone the repository
 ```bash
 git clone https://github.com/your-username/playwright_python_framework.git
 cd playwright_python_framework
 ```
+**Why?** You need the project files locally.
 
-#### 2. **Create a Virtual Environment**
-Keeps your project dependencies isolated from your system Python.
+---
 
+### 1) Create & activate a virtual environment
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # macOS/Linux
-# .\.venv\Scripts\activate  # Windows
+# macOS/Linux:
+source .venv/bin/activate
+# Windows (PowerShell):
+# .venv\Scripts\Activate.ps1
 ```
+**Why?** Keeps your project’s Python packages isolated from system Python.
 
-#### 3. **Install Dependencies**
-Installs all required Python libraries and Playwright browsers.
+---
 
+### 2) Install Python deps and Playwright browsers
 ```bash
 pip install -r requirements.txt
 playwright install
 ```
+**Why?** Installs pytest, Playwright, and helpers. `playwright install` downloads the browser binaries Playwright drives.
 
-#### 4. **Bootstrap Signup**
-Before running any tests, you must create a test account.  
-This script will **sign up on the demo app** and save your credentials into a `.env` file automatically.
+---
 
+### 3) Bootstrap the first user (signup → writes `.env` + saves session)
 ```bash
-python scripts/bootstrap_signup.py --name "Test User" --email testuser@example.com --password "MyPass123!"
+python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
 ```
+> macOS tip: If your password contains `!` or `$`, wrap it in **single quotes**: `'StrongPass!23'`.
 
-What happens here:
-- Navigates to the signup page.
-- Fills in your provided name, email, and password.
-- Submits the form.
-- Saves your credentials in `.env` so tests can use them.
+**What this does:**
+- Opens the demo **Sign Up** page: `https://faruk-hasan.com/automation/signup.html`
+- Fills **username** (`#username`), **email** (`#email`), **password** (`#password`), **confirm password** (`#confirmPassword`)
+- Clicks the **Sign Up** button (role: button, name: “Sign Up”)
+- Writes your credentials to **`.env`**:
+  ```env
+  SIGNUP_NAME=Jane Doe
+  SIGNUP_EMAIL=jane@example.com
+  SIGNUP_PASSWORD=StrongPass123
+  STORAGE_STATE=auth/storage_state.json
+  ```
+- Saves the logged-in session to **`auth/storage_state.json`**
 
-#### 5. **Run the Sample Test**
-Run the included test to confirm everything is set up correctly.
+**Why?** From now on, tests start **already authenticated**. No login steps inside tests.
 
+---
+
+### 4) Confirm the bootstrap worked
+Ensure these now exist:
+- `.env` (contains `SIGNUP_NAME`, `SIGNUP_EMAIL`, `SIGNUP_PASSWORD`, `STORAGE_STATE`)
+- `auth/storage_state.json` (a non-empty JSON file)
+
+**Why?** `conftest.py` uses these to build an authenticated Playwright context automatically.
+
+---
+
+### 5) Run the sample test (quick health check)
 ```bash
 pytest tests/test_sample.py -vv
 ```
+**What this does:** Opens the signup page and asserts the title and required form elements exist.
 
-Expected result:
-- Test should **pass** ✅ if the framework is installed and configured properly.
+**Success looks like:**
+```
+collected 1 item
+tests/test_sample.py::test_framework_setup PASSED                                   [100%]
+```
 
-#### 6. **View Reports**
-After running tests, open the HTML report:
+---
+
+### 6) Run the full test suite
+```bash
+pytest -vv
+```
+**Why?** Verifies the project runs end-to-end under pytest.  
+If you kept the bootstrap test, see the next section to run it only on demand.
+
+---
+
+## 🔁 Running the one-time signup test only when needed (recommended)
+
+If you keep `tests/test_signup_and_save_session.py`, mark it and skip by default so signup only runs when you ask for it:
+
+**`pytest.ini`**
+```ini
+[pytest]
+markers =
+    sample: quick setup verification test
+    bootstrap: one-time signup & session save
+addopts = -m "not bootstrap"
+```
+
+- Daily runs:
+  ```bash
+  pytest
+  ```
+  (Bootstrap test is excluded.)
+- When you actually need to re-bootstrap:
+  ```bash
+  pytest -m bootstrap -vv
+  ```
+
+---
+
+## 🔒 Headless vs. Headed (seeing the browser)
+
+The browser mode is controlled in `conftest.py` within the `browser` fixture.  
+To **watch the browser**, set `headless=False` there:
+
+```python
+browser = p.chromium.launch(headless=False)
+```
+
+---
+
+## 🔐 Rotating credentials / re-signing up
+
+If login fails or the session is stale, quickly create a new user + session:
 
 ```bash
-open reports/html/report.html   # macOS
+python scripts/bootstrap_signup.py --force --random-email --name "New User" --password 'NewStrongPass!23'
+```
+
+**What `--force` does:** deletes old `auth/storage_state.json` and overwrites creds in `.env`.  
+
+---
+
+## 📊 Test Reports (HTML)
+
+### One-time setup
+```bash
+pip install pytest-html pytest-metadata
+```
+
+### Generate a report (one-off)
+```bash
+pytest -vv --html=reports/html/report.html --self-contained-html
+```
+
+Open the report in your browser:
+```bash
+open reports/html/report.html  # macOS
 start reports\html\report.html  # Windows
 ```
 
----
-
-## 🔐 Environment Variables
-
-The `.env` file is created automatically during signup, but you can also edit it manually.
-
-```env
-BASE_URL=https://faruk-hasan.com/automation/signup.html
-LOGIN_EMAIL=testuser@example.com
-LOGIN_PASSWORD=MyPass123!
-```
-
-These values are used by tests to log in without signing up each time.
-
----
-
-## 🧪 Writing Your Own Tests
-
-- Add new tests inside the `tests/` folder.
-- Use the `page` fixture provided by Playwright to interact with the browser.
-- Example:
-
-```python
-def test_example(page):
-    page.goto("https://example.com")
-    assert page.title() == "Example Domain"
+### Always generate reports automatically
+Add this to your `pytest.ini`:
+```ini
+[pytest]
+addopts = --html=reports/html/report.html --self-contained-html
 ```
 
 ---
 
-## 🤖 Common Commands
+## 🧩 Project Structure
 
-| Action                    | Command                                |
-|---------------------------|----------------------------------------|
-| Run all tests             | `pytest`                               |
-| Run one test file         | `pytest tests/test_sample.py`          |
-| Run with detailed output  | `pytest -vv`                           |
-| View HTML report          | Open `reports/html/report.html`        |
+```
+playwright_python_framework/
+├─ auth/
+│  └─ storage_state.json
+├─ pages/
+│  └─ signup_page.py
+├─ scripts/
+│  └─ bootstrap_signup.py
+├─ tests/
+│  ├─ test_sample.py
+│  └─ test_signup_and_save_session.py
+├─ .env.example
+├─ conftest.py
+├─ pytest.ini
+├─ requirements.txt
+└─ README.md
+```
 
 ---
 
-## 🎉 You’re Ready!
+## 🧾 .gitignore
 
-Now you can:
-- Run tests to validate your setup
-- Extend the framework with new pages and tests
-- Use `.env` to manage login credentials automatically
+```
+.env
+auth/storage_state.json
+.pytest_cache/
+__pycache__/
+.venv/
+reports/
+```
 
-This project is **beginner-friendly** — just follow the steps above, and you’ll be up and running with a professional-grade Playwright testing framework.
+---
+
+## 🔗 Handy Commands
+
+```bash
+pytest tests/test_sample.py -vv
+pytest -vv
+python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
+python scripts/bootstrap_signup.py --force --random-email --name "New User" --password 'NewStrongPass!23'
+pytest -vv --html=reports/html/report.html --self-contained-html
+```
+
+---
+
+**You’re set!**
