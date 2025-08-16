@@ -34,28 +34,27 @@ def write_env(name: str, email: str, password: str):
 
 def do_signup(name: str, email: str, password: str, storage_path: str):
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)  # headed for clarity on first run
+        browser = p.chromium.launch(headless=False)
         ctx = browser.new_context()
         page = ctx.new_page()
 
         page.goto(SIGNUP_URL, wait_until="domcontentloaded")
         expect(page).to_have_title("Sign Up - Automation Practice")
 
-        # Labels make this robust across minor HTML changes
-        page.get_by_label(r"(?i)name").fill(name)
-        page.get_by_label(r"(?i)email").fill(email)
-        page.get_by_label(r"(?i)password").fill(password)
+        # Fill the form by ID
+        page.fill("#username", name)
+        page.fill("#email", email)
+        page.fill("#password", password)
+        page.fill("#confirmPassword", password)
 
-        # Confirm password if such a field exists
-        confirm = page.get_by_label(r"(?i)confirm")
-        if confirm.count() > 0:
-            confirm.fill(password)
+        # Click Sign Up button by role+name
+        page.get_by_role("button", name="Sign Up").click()
 
-        page.get_by_role("button").click()
-
+        # Save session
         Path(os.path.dirname(storage_path) or ".").mkdir(parents=True, exist_ok=True)
         ctx.storage_state(path=storage_path)
         browser.close()
+
 
 def main():
     parser = argparse.ArgumentParser(description="Bootstrap signup and persist credentials/session")
