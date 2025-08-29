@@ -4,7 +4,7 @@ from playwright.sync_api import Page, expect
 @pytest.mark.smoke
 def test_logged_in_title(page: Page):
     # Go directly to the main logged-in landing page
-    page.goto("https://faruk-hasan.com/automation/")
+    page.goto("https://faruk-hasan.com/automation/login.html")
 
     # Grab the page title
     title = page.title()
