@@ -2,11 +2,45 @@
 
 A modular, pytest-based **Playwright (Python)** framework for web UI testing.
 
-This repo is set up so that a new user can:
-1. **Sign up once** on the demo page,  
-2. **Log in automatically after signup**,  
-3. Save credentials to `.env` and the logged-in session to `auth/storage_state.json`, and  
-4. **Reuse the logged-in session** on every test run — no login code inside tests.
+---
+
+## 🚀 Quick Start (2‑Minute Guide)
+
+1. **Clone & enter the project**
+   ```bash
+   git clone https://github.com/your-username/playwright_python_framework.git
+   cd playwright_python_framework
+   ```
+
+2. **Create virtualenv & install deps**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate   # macOS/Linux
+   # .venv\Scripts\Activate.ps1  # Windows
+   pip install -r requirements.txt
+   playwright install
+   ```
+
+3. **Bootstrap once (signup → login → save session)**
+   ```bash
+   python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
+   ```
+
+4. **Verify session works (smoke test)**
+   ```bash
+   pytest tests/test_logged_in_session.py -s
+   ```
+   > Tip: to **watch it in a real browser**, run headed:
+   > ```bash
+   > HEADLESS=false pytest -s tests/test_logged_in_session.py
+   > ```
+
+5. **Run the full suite**
+   ```bash
+   pytest -vv
+   ```
+
+**If the smoke test fails later:** your saved session likely expired → re-run step 3 (bootstrap) to refresh it.
 
 ---
 
@@ -15,22 +49,19 @@ This repo is set up so that a new user can:
 - **Page Object Model (POM)** for clean, maintainable tests  
 - **Signup + Login bootstrap script** to persist credentials + session  
 - **Global fixtures** via `conftest.py` (browser/context/page management)  
-- **Session auto-reuse**: tests automatically start logged in if `auth/storage_state.json` exists  
-- **Sample smoke test** to confirm session reuse  
+- **Session auto‑reuse**: tests start logged in if `auth/storage_state.json` exists  
+- **Smoke test** to confirm session reuse  
 - **HTML/JUnit reports** (via `pytest-html`, JUnit XML)  
-- **CI-friendly** configuration (pytest, reports)  
+- **CI‑friendly** configuration (pytest, reports)  
 
 > Tested against **pytest 8+** and **Playwright 1.45+**.
 
 ---
 
-## 🧭 First-Time Setup
+## 🧭 Full Setup & Usage
 
-### 1. Clone and set up environment
+### 1) Environment setup
 ```bash
-git clone https://github.com/your-username/playwright_python_framework.git
-cd playwright_python_framework
-
 python -m venv .venv
 source .venv/bin/activate   # macOS/Linux
 # .venv\Scripts\Activate.ps1  # Windows
@@ -39,15 +70,11 @@ pip install -r requirements.txt
 playwright install
 ```
 
----
-
-### 2. Bootstrap the first user
+### 2) Bootstrap the first user
 Run the bootstrap script (signup → login → save session):
-
 ```bash
 python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
 ```
-
 This will:
 - Open the demo **Sign Up** page (`/signup.html`)  
 - Fill username, email, password, confirm password  
@@ -56,54 +83,63 @@ This will:
 - Log in with the same credentials  
 - Confirm success by asserting the page title  
 - Save credentials to `.env`  
-- Save the logged-in session to `auth/storage_state.json`  
+- Save the logged‑in session to `auth/storage_state.json`  
 
----
-
-### 3. Verify bootstrap worked
-After bootstrap, you should see:
+### 3) Verify bootstrap worked
+You should see:
 - `.env` with your signup credentials and session path  
-- `auth/storage_state.json` (non-empty JSON file containing cookies + localStorage)
+- `auth/storage_state.json` (non‑empty JSON file containing cookies + localStorage)
 
----
-
-### 4. Run a smoke test
+### 4) Run a smoke test
 ```bash
 pytest tests/test_logged_in_session.py -s
 ```
-
-Expected output:
+Expected output (or similar):
 ```
 [TEST] Verified logged-in session with title: Playwright, Selenium & Cypress Practice | Interactive Automation Testing Playground
 ```
 
----
-
-### 5. Run all tests
+### 5) Run all tests
 ```bash
 pytest -vv
 ```
-
 - If `auth/storage_state.json` is valid → all tests start authenticated.  
-- If missing/invalid → `conftest.py` will auto-run bootstrap.  
+- If missing/invalid → your `conftest.py` can auto‑bootstrap (if you enabled that), or just re-run the bootstrap script.
 
 ---
 
 ## 🔁 Refreshing the Session
-If cookies expire or you want a new account:
 
+If cookies expire or you want a new account:
 ```bash
 python scripts/bootstrap_signup.py --name "New User" --email "new@example.com" --password "AnotherPass123"
 ```
+Or delete `auth/storage_state.json` and run tests again (auto‑bootstrap if enabled).
 
-Or just delete `auth/storage_state.json` and rerun pytest — the bootstrap will be triggered again.
+### When to re‑bootstrap
+- Your **login smoke test fails** (e.g., you land on the login page instead of the dashboard), or  
+- Tests suddenly can’t find logged‑in elements.  
+
+➡️ The saved session likely expired or was invalidated. **Fix:** rerun the bootstrap script:
+```bash
+python scripts/bootstrap_signup.py --force --random-email --name "New User" --password "AnotherPass123"
+```
+Then re-run:
+```bash
+pytest -m smoke -s
+pytest -vv
+```
 
 ---
 
 ## 🔒 Headless vs Headed
 
-By default, runs headless. To see the browser, pass `--headed`:
+By default, runs headless. To see the browser, set `HEADLESS=false`:
+```bash
+HEADLESS=false pytest -s tests/test_logged_in_session.py
+```
 
+You can also run the bootstrap script in headed mode (if it supports a `--headed` flag):
 ```bash
 python scripts/bootstrap_signup.py --headed --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
 ```
@@ -116,7 +152,6 @@ Install extra deps:
 ```bash
 pip install pytest-html pytest-metadata
 ```
-
 Generate HTML report:
 ```bash
 pytest -vv --html=reports/html/report.html --self-contained-html
