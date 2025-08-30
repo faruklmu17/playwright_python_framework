@@ -23,7 +23,7 @@ A modular, pytest-based **Playwright (Python)** framework for web UI testing.
 
 3. **Bootstrap once (signup → login → save session)**
    ```bash
-   python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
+   python -m scripts.bootstrap_signup --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
    ```
 
 4. **Verify session works (smoke test)**
@@ -73,7 +73,7 @@ playwright install
 ### 2) Bootstrap the first user
 Run the bootstrap script (signup → login → save session):
 ```bash
-python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
+python -m scripts.bootstrap_signup --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
 ```
 This will:
 - Open the demo **Sign Up** page (`/signup.html`)  
@@ -112,7 +112,7 @@ pytest -vv
 
 If cookies expire or you want a new account:
 ```bash
-python scripts/bootstrap_signup.py --name "New User" --email "new@example.com" --password "AnotherPass123"
+python -m scripts.bootstrap_signup --name "New User" --email "new@example.com" --password "AnotherPass123"
 ```
 Or delete `auth/storage_state.json` and run tests again (auto‑bootstrap if enabled).
 
@@ -122,7 +122,7 @@ Or delete `auth/storage_state.json` and run tests again (auto‑bootstrap if ena
 
 ➡️ The saved session likely expired or was invalidated. **Fix:** rerun the bootstrap script:
 ```bash
-python scripts/bootstrap_signup.py --force --random-email --name "New User" --password "AnotherPass123"
+python -m scripts.bootstrap_signup --force --random-email --name "New User" --password "AnotherPass123"
 ```
 Then re-run:
 ```bash
@@ -141,7 +141,7 @@ HEADLESS=false pytest -s tests/test_logged_in_session.py
 
 You can also run the bootstrap script in headed mode (if it supports a `--headed` flag):
 ```bash
-python scripts/bootstrap_signup.py --headed --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
+python -m scripts.bootstrap_signup --headed --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
 ```
 
 ---
@@ -194,14 +194,50 @@ reports/
 
 ---
 
+## 🐞 Debugging: "ModuleNotFoundError: No module named 'pages'"
+
+If you see an error like:
+
+```
+ModuleNotFoundError: No module named 'pages'
+```
+
+…it means Python couldn’t resolve imports when running `scripts/bootstrap_signup.py` directly.
+
+### Fix Options
+
+1. **Run as a module (recommended)**  
+   From the project root, use `-m` instead of calling the file directly:
+   ```bash
+   python -m scripts.bootstrap_signup --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
+   ```
+
+2. **Make folders into packages**  
+   Add empty `__init__.py` files so Python treats them as packages:
+   ```
+   pages/__init__.py
+   scripts/__init__.py
+   ```
+
+3. **Add a safety net inside the script**  
+   At the top of `scripts/bootstrap_signup.py`, add:
+   ```python
+   import os, sys
+   sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+   ```
+
+This ensures the script can always find `pages/signup_page.py` regardless of how it’s run.
+
+---
+
 ## 🔗 Handy Commands
 
 ```bash
 # Bootstrap (signup → login → save session)
-python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
+python -m scripts.bootstrap_signup --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
 
 # Force new user & session
-python scripts/bootstrap_signup.py --force --random-email --name "New User" --password 'NewStrongPass!23'
+python -m scripts.bootstrap_signup --force --random-email --name "New User" --password 'NewStrongPass!23'
 
 # Run tests
 pytest -vv
