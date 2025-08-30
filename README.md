@@ -243,7 +243,7 @@ python -m scripts.bootstrap_signup --force --random-email --name "New User" --pa
 pytest -vv
 
 # Run smoke test only
-pytest tests/test_logged_in_session.py -s
+pytest tests/test_logged_in.py -s
 
 # Generate HTML report
 pytest -vv --html=reports/html/report.html --self-contained-html
