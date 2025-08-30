@@ -16,7 +16,7 @@ A modular, pytest-based **Playwright (Python)** framework for web UI testing.
    ```bash
    python -m venv .venv
    source .venv/bin/activate   # macOS/Linux
-   # .venv\Scripts\Activate.ps1  # Windows
+   .venv\Scripts\Activate.ps1  # Windows
    pip install -r requirements.txt
    playwright install
    ```
