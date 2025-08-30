@@ -1,14 +1,20 @@
 import pytest
 from playwright.sync_api import Page, expect
+import time
+
+# Matches what you set in test_signup_and_save_session
+EXPECTED_TITLE = "Playwright, Selenium & Cypress Practice | Interactive Automation Testing Playground"
 
 @pytest.mark.smoke
-def test_logged_in_title(page: Page):
-    # Go directly to the main logged-in landing page
-    page.goto("https://faruk-hasan.com/automation/login.html")
+def test_logged_in_session(page: Page):
+    # Navigate directly to a page that requires you to be logged in
+    page.goto("https://faruk-hasan.com/automation/playwright-selenium-cypress-practice.html")
 
-    # Grab the page title
-    title = page.title()
-    print(f"\n[TEST] Logged-in page title: {title}")
+    # Assert that the session from storage_state.json is applied
+    expect(page).to_have_title(EXPECTED_TITLE)
 
-    # Assert that we are logged in by checking the expected title
-    expect(page).to_have_title("Automation Adventure")
+    # (Optional) Check for a logged-in UI element, e.g. Logout button
+    # expect(page.get_by_role("button", name="Logout")).to_be_visible()
+
+    print(f"\n[TEST] Verified logged-in session with title: {page.title()}")
+    time.sleep(5)

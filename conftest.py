@@ -2,6 +2,7 @@
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 from uuid import uuid4
 
@@ -15,9 +16,12 @@ ENV = dotenv_values(".env")
 
 STORAGE = ENV.get("STORAGE_STATE", "auth/storage_state.json")
 SIGNUP_NAME = ENV.get("SIGNUP_NAME", "QA User")
-SIGNUP_EMAIL = ENV.get("SIGNUP_EMAIL")  # may be None
+SIGNUP_EMAIL = ENV.get("SIGNUP_EMAIL")  # may be None -> auto-generate
 SIGNUP_PASSWORD = ENV.get("SIGNUP_PASSWORD", "StrongPass123")
-BOOTSTRAP_CMD = ["python", "scripts/bootstrap_signup.py"]
+BOOTSTRAP_CMD = [sys.executable, "scripts/bootstrap_signup.py"]  # cross-platform
+FORCE_BOOTSTRAP = os.getenv("FORCE_BOOTSTRAP") in {"1", "true", "True"}
+
+HEADLESS = os.getenv("HEADLESS", "true").lower() in {"1", "true", "yes"}
 
 def _valid_storage(path: str) -> bool:
     p = Path(path)
@@ -25,25 +29,39 @@ def _valid_storage(path: str) -> bool:
         return False
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
-        return bool(data.get("cookies") or data.get("origins"))
+        cookies_ok = isinstance(data.get("cookies"), list) and len(data.get("cookies", [])) > 0
+        origins_ok = isinstance(data.get("origins"), list) and len(data.get("origins", [])) > 0
+        return cookies_ok or origins_ok
     except Exception:
         return False
 
 def _bootstrap_if_needed():
-    if _valid_storage(STORAGE):
+    if not FORCE_BOOTSTRAP and _valid_storage(STORAGE):
         return
+
     Path(STORAGE).parent.mkdir(parents=True, exist_ok=True)
     email = SIGNUP_EMAIL or f"test_{uuid4().hex[:10]}@example.com"
+
+    # IMPORTANT: ensure your bootstrap script accepts --storage
+    # If your script uses --out instead, change "--storage" -> "--out"
     cmd = BOOTSTRAP_CMD + [
         "--name", SIGNUP_NAME,
         "--email", email,
         "--password", SIGNUP_PASSWORD,
         "--storage", STORAGE,
     ]
-    print(f"[conftest] Storage invalid/missing. Bootstrapping: {' '.join(cmd)}")
-    subprocess.check_call(cmd)
 
-# --- Playwright lifecycle without pytest-playwright plugin ---
+    print(f"[conftest] Bootstrapping auth state: {' '.join(cmd)}")
+    try:
+        subprocess.check_call(cmd)
+    except subprocess.CalledProcessError as e:
+        pytest.fail(f"[conftest] Bootstrap failed with exit code {e.returncode}. "
+                    f"Cmd: {' '.join(cmd)}")
+
+    if not _valid_storage(STORAGE):
+        pytest.fail(f"[conftest] Bootstrap completed but storage is invalid: {STORAGE}")
+
+# --- Playwright lifecycle (without pytest-playwright plugin) ---
 
 @pytest.fixture(scope="session")
 def playwright():
@@ -54,21 +72,35 @@ def playwright():
 @pytest.fixture(scope="session")
 def browser(playwright):
     """Launch a single Chromium for the session."""
-    browser = playwright.chromium.launch(headless=False)
+    browser = playwright.chromium.launch(headless=HEADLESS)
     yield browser
     browser.close()
 
-@pytest.fixture(scope="session")
-def context(browser):
-    """Authenticated browser context; ensures storage_state exists."""
+@pytest.fixture(scope="session", autouse=True)
+def ensure_bootstrap():
+    """
+    Session-wide guard: ensure storage exists before tests run.
+    If missing/invalid, bootstrap (signup+login) once.
+    """
     _bootstrap_if_needed()
+
+@pytest.fixture
+def context(browser):
+    """
+    Fresh, isolated context per test, but pre-loaded with saved storage.
+    This prevents test cross-contamination and supports parallel runs later.
+    """
     ctx = browser.new_context(storage_state=STORAGE)
-    yield ctx
-    ctx.close()
+    try:
+        yield ctx
+    finally:
+        ctx.close()
 
 @pytest.fixture
 def page(context):
     """Fresh page per test."""
     p = context.new_page()
-    yield p
-    p.close()
+    try:
+        yield p
+    finally:
+        p.close()

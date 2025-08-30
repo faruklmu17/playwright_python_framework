@@ -13,10 +13,10 @@ This repo is set up so that a new user can:
 ## ✅ What’s Included
 
 - **Page Object Model (POM)** for clean, maintainable tests  
-- **Signup+Login bootstrap flow** that persists credentials + session  
-- **Global fixtures** via `conftest.py` (one place to manage browser/context/page)  
-- **Session auto-recovery**: if the saved session is missing or invalid, the framework auto-runs the bootstrap  
-- **Sample tests** to verify setup  
+- **Signup + Login bootstrap script** to persist credentials + session  
+- **Global fixtures** via `conftest.py` (browser/context/page management)  
+- **Session auto-reuse**: tests automatically start logged in if `auth/storage_state.json` exists  
+- **Sample smoke test** to confirm session reuse  
 - **HTML/JUnit reports** (via `pytest-html`, JUnit XML)  
 - **CI-friendly** configuration (pytest, reports)  
 
@@ -24,92 +24,85 @@ This repo is set up so that a new user can:
 
 ---
 
-## 🧭 First-Time Setup — Step by Step (with explanations)
+## 🧭 First-Time Setup
 
-### 0) Clone the repository
+### 1. Clone and set up environment
 ```bash
 git clone https://github.com/your-username/playwright_python_framework.git
 cd playwright_python_framework
-```
 
----
-
-### 1) Create & activate a virtual environment
-```bash
 python -m venv .venv
-# macOS/Linux:
-source .venv/bin/activate
-# Windows (PowerShell):
-# .venv\Scripts\Activate.ps1
-```
+source .venv/bin/activate   # macOS/Linux
+# .venv\Scripts\Activate.ps1  # Windows
 
----
-
-### 2) Install Python deps and Playwright browsers
-```bash
 pip install -r requirements.txt
 playwright install
 ```
 
 ---
 
-### 3) Bootstrap the first user (signup → login → writes `.env` + saves session)
+### 2. Bootstrap the first user
+Run the bootstrap script (signup → login → save session):
+
 ```bash
 python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
 ```
 
-**What this does:**
-- Opens the demo **Sign Up** page: `https://faruk-hasan.com/automation/signup.html`  
-- Fills **username**, **email**, **password**, **confirm password**  
-- Clicks **Sign Up**  
-- Then goes to the **Login** page: `https://faruk-hasan.com/automation/login.html`  
-- Logs in with the same credentials (using the placeholders: *Enter your username*, *Enter your password*)  
-- Confirms success by asserting the page title:  
-  *“Playwright, Selenium & Cypress Practice | Interactive Automation Testing Playground”*  
-- Writes credentials to **`.env`**  
-- Saves the logged-in session to **`auth/storage_state.json`**
+This will:
+- Open the demo **Sign Up** page (`/signup.html`)  
+- Fill username, email, password, confirm password  
+- Click **Sign Up**  
+- Then go to the **Login** page (`/login.html`)  
+- Log in with the same credentials  
+- Confirm success by asserting the page title  
+- Save credentials to `.env`  
+- Save the logged-in session to `auth/storage_state.json`  
 
 ---
 
-### 4) Confirm the bootstrap worked
-Ensure these now exist:
-- `.env` (contains `SIGNUP_NAME`, `SIGNUP_EMAIL`, `SIGNUP_PASSWORD`, `STORAGE_STATE`)  
-- `auth/storage_state.json` (a non-empty JSON file with cookies & storage)
+### 3. Verify bootstrap worked
+After bootstrap, you should see:
+- `.env` with your signup credentials and session path  
+- `auth/storage_state.json` (non-empty JSON file containing cookies + localStorage)
 
 ---
 
-### 5) Run the sample test (quick health check)
+### 4. Run a smoke test
 ```bash
-pytest tests/test_sample.py -vv
+pytest tests/test_logged_in_session.py -s
+```
+
+Expected output:
+```
+[TEST] Verified logged-in session with title: Playwright, Selenium & Cypress Practice | Interactive Automation Testing Playground
 ```
 
 ---
 
-### 6) Run the full test suite
+### 5. Run all tests
 ```bash
 pytest -vv
 ```
 
-**How it works now:**  
-- If `auth/storage_state.json` is valid → tests start authenticated immediately.  
-- If it’s missing/invalid → `conftest.py` auto-runs the bootstrap to create a fresh account + session.  
+- If `auth/storage_state.json` is valid → all tests start authenticated.  
+- If missing/invalid → `conftest.py` will auto-run bootstrap.  
 
 ---
 
-## 🔁 Running the bootstrap only on demand
-If you want to explicitly re-bootstrap (fresh account + session):
+## 🔁 Refreshing the Session
+If cookies expire or you want a new account:
 
 ```bash
-python scripts/bootstrap_signup.py --force --random-email --name "New User" --password 'NewStrongPass!23'
+python scripts/bootstrap_signup.py --name "New User" --email "new@example.com" --password "AnotherPass123"
 ```
 
-Or just delete `auth/storage_state.json` and run `pytest` — the auto-bootstrap will kick in.
+Or just delete `auth/storage_state.json` and rerun pytest — the bootstrap will be triggered again.
 
 ---
 
-## 🔒 Headless vs. Headed (seeing the browser)
+## 🔒 Headless vs Headed
 
-To watch the browser during bootstrap, pass `--headed`:
+By default, runs headless. To see the browser, pass `--headed`:
 
 ```bash
 python scripts/bootstrap_signup.py --headed --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
@@ -117,14 +110,14 @@ python scripts/bootstrap_signup.py --headed --name "Jane Doe" --email "jane@exam
 
 ---
 
-## 📊 Test Reports (HTML)
+## 📊 Test Reports
 
-### One-time setup
+Install extra deps:
 ```bash
 pip install pytest-html pytest-metadata
 ```
 
-### Generate a report
+Generate HTML report:
 ```bash
 pytest -vv --html=reports/html/report.html --self-contained-html
 ```
@@ -138,14 +131,13 @@ playwright_python_framework/
 ├─ auth/
 │  └─ storage_state.json
 ├─ pages/
-│  ├─ signup_page.py
-│  └─ login_page.py
+│  └─ signup_page.py
 ├─ scripts/
 │  └─ bootstrap_signup.py
 ├─ tests/
-│  ├─ test_sample.py
-│  └─ test_login.py
-├─ .env.example
+│  ├─ test_logged_in_session.py
+│  └─ other_tests.py
+├─ .env
 ├─ conftest.py
 ├─ pytest.ini
 ├─ requirements.txt
@@ -170,7 +162,7 @@ reports/
 ## 🔗 Handy Commands
 
 ```bash
-# First bootstrap (signup → login → save session)
+# Bootstrap (signup → login → save session)
 python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
 
 # Force new user & session
@@ -179,8 +171,8 @@ python scripts/bootstrap_signup.py --force --random-email --name "New User" --pa
 # Run tests
 pytest -vv
 
-# Run sample test only
-pytest tests/test_sample.py -vv
+# Run smoke test only
+pytest tests/test_logged_in_session.py -s
 
 # Generate HTML report
 pytest -vv --html=reports/html/report.html --self-contained-html
@@ -188,5 +180,4 @@ pytest -vv --html=reports/html/report.html --self-contained-html
 
 ---
 
-**You’re all set!** 🎉  
-Now your framework signs up, logs in, saves the session, and auto-recovers if the session goes stale.
+🎉 You’re all set — the framework signs up, logs in, saves the session, and reuses it for fast, reliable tests.
