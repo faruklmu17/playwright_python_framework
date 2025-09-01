@@ -28,7 +28,7 @@ A modular, pytest-based **Playwright (Python)** framework for web UI testing.
 
 4. **Verify session works (smoke test)**
    ```bash
-   pytest tests/test_logged_in_session.py -s
+   pytest tests/test_logged_in.py -s
    ```
    > Tip: to **watch it in a real browser**, run headed:
    > ```bash
