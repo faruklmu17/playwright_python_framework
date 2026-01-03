@@ -18,7 +18,7 @@ STORAGE = ENV.get("STORAGE_STATE", "auth/storage_state.json")
 SIGNUP_NAME = ENV.get("SIGNUP_NAME", "QA User")
 SIGNUP_EMAIL = ENV.get("SIGNUP_EMAIL")  # may be None -> auto-generate
 SIGNUP_PASSWORD = ENV.get("SIGNUP_PASSWORD", "StrongPass123")
-BOOTSTRAP_CMD = [sys.executable, "scripts/bootstrap_signup.py"]  # cross-platform
+BOOTSTRAP_CMD = [sys.executable, str(Path("scripts/bootstrap_signup.py"))]  # cross-platform
 FORCE_BOOTSTRAP = os.getenv("FORCE_BOOTSTRAP") in {"1", "true", "True"}
 
 HEADLESS = os.getenv("HEADLESS", "true").lower() in {"1", "true", "yes"}
@@ -52,8 +52,13 @@ def _bootstrap_if_needed():
     ]
 
     print(f"[conftest] Bootstrapping auth state: {' '.join(cmd)}")
+    
+    # Ensure current directory is in PYTHONPATH for the subprocess
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.getcwd() + os.pathsep + env.get("PYTHONPATH", "")
+
     try:
-        subprocess.check_call(cmd)
+        subprocess.check_call(cmd, env=env)
     except subprocess.CalledProcessError as e:
         pytest.fail(f"[conftest] Bootstrap failed with exit code {e.returncode}. "
                     f"Cmd: {' '.join(cmd)}")

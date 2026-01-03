@@ -1,54 +1,65 @@
-# tests/test_signup_and_save_session.py
+# scripts/bootstrap_signup.py
+import argparse
+import sys
 import os
-import time
 from pathlib import Path
-import pytest
-from playwright.sync_api import Page, BrowserContext, expect
+from playwright.sync_api import sync_playwright, expect
 from pages.signup_page import SignupPage
 
-STORAGE_PATH = os.getenv("STORAGE_STATE", "auth/storage_state.json")
-FORCE_BOOTSTRAP = os.getenv("FORCE_BOOTSTRAP") in {"1", "true", "True"}
-
-# Your hosted pages + expected post-login title
+# Load defaults from env if available (matching your original logic)
 LOGIN_URL = os.getenv("LOGIN_URL", "https://faruk-hasan.com/automation/login.html")
 EXPECTED_TITLE = os.getenv(
     "EXPECTED_TITLE",
     "Playwright, Selenium & Cypress Practice | Interactive Automation Testing Playground"
 )
 
-@pytest.mark.bootstrap
-def test_signup_and_save_session(page: Page, context: BrowserContext):
-    """
-    1) Sign up (hosted signup page from SignupPage)
-    2) Login (same context)
-    3) Verify success by title
-    4) Save storage_state.json
-    """
-    if Path(STORAGE_PATH).exists() and not FORCE_BOOTSTRAP:
-        pytest.skip(f"Storage state already exists at {STORAGE_PATH}; bootstrap not needed.")
+def main():
+    parser = argparse.ArgumentParser(description="Bootstrap auth state via signup + login")
+    parser.add_argument("--name", required=True, help="User display name")
+    parser.add_argument("--email", required=True, help="User email")
+    parser.add_argument("--password", required=True, help="User password")
+    parser.add_argument("--storage", required=True, help="Path to save storage state")
+    
+    args = parser.parse_args()
+    
+    print(f"[bootstrap] Starting bootstrap for {args.email}...")
 
-    # --- Sign Up ---
-    sp = SignupPage(page)
-    sp.goto()
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context()
+        page = context.new_page()
 
-    epoch = int(time.time())
-    username = f"TestUser{epoch}"
-    email = f"playwright_user_{epoch}@example.com"
-    password = f"P@ssw0rd{epoch}!"
+        try:
+            # 1. Sign Up
+            signup_page = SignupPage(page)
+            signup_page.goto()
+            # We use the 'name' argument as the username for both signup and login
+            signup_page.sign_up(args.name, args.email, args.password)
 
-    sp.sign_up(username, email, password)
+            # 2. Login (Some apps require manual login after signup)
+            print(f"[bootstrap] Logging in at {LOGIN_URL}...")
+            page.goto(LOGIN_URL, wait_until="domcontentloaded")
+            
+            # Use placeholders as in your original script
+            page.get_by_placeholder("Enter your username").fill(args.name)
+            page.get_by_placeholder("Enter your password").fill(args.password)
+            page.get_by_role("button", name="Login").click()
 
-    # --- Login in the SAME CONTEXT ---
-    page.goto(LOGIN_URL, wait_until="domcontentloaded")
-    page.get_by_placeholder("Enter your username").fill(username)
-    page.get_by_placeholder("Enter your password").fill(password)
-    page.get_by_role("button", name="Login").click()
+            # 3. Verify we're authenticated
+            expect(page).to_have_title(EXPECTED_TITLE)
+            
+            # 4. Save storage state
+            storage_path = Path(args.storage)
+            storage_path.parent.mkdir(parents=True, exist_ok=True)
+            context.storage_state(path=str(storage_path))
+            
+            print(f"[bootstrap] Successfully saved storage state to {args.storage}")
+            
+        except Exception as e:
+            print(f"[bootstrap] Error during bootstrap: {e}")
+            sys.exit(1)
+        finally:
+            browser.close()
 
-    # --- Verify we're authenticated ---
-    # Adjust this if your app shows a specific logged-in element (e.g., Logout button)
-    expect(page).to_have_title(EXPECTED_TITLE)
-
-    # --- Save session for reuse ---
-    Path(STORAGE_PATH).parent.mkdir(parents=True, exist_ok=True)
-    context.storage_state(path=STORAGE_PATH)
-    assert Path(STORAGE_PATH).exists(), f"Expected storage state at {STORAGE_PATH}"
+if __name__ == "__main__":
+    main()
