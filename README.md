@@ -23,7 +23,7 @@ A modular, pytest-based **Playwright (Python)** framework for web UI testing.
 
 3. **Bootstrap once (signup → login → save session)**
    ```bash
-   python -m scripts.bootstrap_signup --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
+   python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123" --storage "auth/storage_state.json"
    ```
 
 4. **Verify session works (smoke test)**
@@ -73,7 +73,7 @@ playwright install
 ### 2) Bootstrap the first user
 Run the bootstrap script (signup → login → save session):
 ```bash
-python -m scripts.bootstrap_signup --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
+python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123" --storage "auth/storage_state.json"
 ```
 This will:
 - Open the demo **Sign Up** page (`/signup.html`)  
@@ -112,9 +112,9 @@ pytest -vv
 
 If cookies expire or you want a new account:
 ```bash
-python -m scripts.bootstrap_signup --name "New User" --email "new@example.com" --password "AnotherPass123"
+python scripts/bootstrap_signup.py --name "New User" --email "new@example.com" --password "AnotherPass123" --storage "auth/storage_state.json"
 ```
-Or delete `auth/storage_state.json` and run tests again (auto‑bootstrap if enabled).
+Or delete `auth/storage_state.json` and run tests again — the framework now auto-bootstraps if the file is missing!
 
 ### When to re‑bootstrap
 - Your **login smoke test fails** (e.g., you land on the login page instead of the dashboard), or  
@@ -122,26 +122,44 @@ Or delete `auth/storage_state.json` and run tests again (auto‑bootstrap if ena
 
 ➡️ The saved session likely expired or was invalidated. **Fix:** rerun the bootstrap script:
 ```bash
-python -m scripts.bootstrap_signup --force --random-email --name "New User" --password "AnotherPass123"
+python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123" --storage "auth/storage_state.json"
 ```
 Then re-run:
 ```bash
-pytest -m smoke -s
+pytest tests/test_logged_in.py -s
 pytest -vv
 ```
 
 ---
 
-## 🔒 Headless vs Headed
+## � Login‑Only Flow (No Signup)
+
+If your application does not have a Sign Up page or you prefer to use a pre-existing account:
+
+1.  **Modify the Bootstrap Script**: Open `scripts/bootstrap_signup.py`.
+2.  **Remove Signup Logic**: Comment out or delete the `SignupPage` interaction:
+    ```python
+    # signup_page = SignupPage(page)
+    # signup_page.goto()
+    # signup_page.sign_up(args.name, args.email, args.password)
+    ```
+3.  **Ensure Login Logic is Active**: The script already includes a login step that uses the credentials provided via CLI.
+4.  **Run as Usual**: The rest of the framework (session saving and auto-loading in tests) will work identically.
+
+This ensures you can still benefit from the "log in once, test many times" architecture even without an automated signup.
+
+---
+
+## �🔒 Headless vs Headed
 
 By default, runs headless. To see the browser, set `HEADLESS=false`:
 ```bash
 HEADLESS=false pytest -s tests/test_logged_in_session.py
 ```
 
-You can also run the bootstrap script in headed mode (if it supports a `--headed` flag):
+You can also run the bootstrap script directly if you need to refresh credentials manually. The framework handles the `PYTHONPATH` automatically, so you can run it from the project root:
 ```bash
-python -m scripts.bootstrap_signup --headed --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
+python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123" --storage "auth/storage_state.json"
 ```
 
 ---
@@ -194,39 +212,19 @@ reports/
 
 ---
 
-## 🐞 Debugging: "ModuleNotFoundError: No module named 'pages'"
+## 🐞 Cross-Platform Path Handling
 
-If you see an error like:
+The framework is fully cross-platform (Windows/macOS/Linux). It automatically handles the `PYTHONPATH` when running bootstrap scripts as subprocesses from `conftest.py`.
 
+If you are running scripts manually and encounter `ModuleNotFoundError: No module named 'pages'`, ensure you are in the project root and use:
+
+```bash
+# Recommended way to run any script manually
+set PYTHONPATH=.
+python scripts/bootstrap_signup.py [args]
 ```
-ModuleNotFoundError: No module named 'pages'
-```
 
-…it means Python couldn’t resolve imports when running `scripts/bootstrap_signup.py` directly.
-
-### Fix Options
-
-1. **Run as a module (recommended)**  
-   From the project root, use `-m` instead of calling the file directly:
-   ```bash
-   python -m scripts.bootstrap_signup --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
-   ```
-
-2. **Make folders into packages**  
-   Add empty `__init__.py` files so Python treats them as packages:
-   ```
-   pages/__init__.py
-   scripts/__init__.py
-   ```
-
-3. **Add a safety net inside the script**  
-   At the top of `scripts/bootstrap_signup.py`, add:
-   ```python
-   import os, sys
-   sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-   ```
-
-This ensures the script can always find `pages/signup_page.py` regardless of how it’s run.
+*(Note: On macOS/Linux use `export PYTHONPATH=.`)*
 
 ---
 
@@ -234,10 +232,7 @@ This ensures the script can always find `pages/signup_page.py` regardless of how
 
 ```bash
 # Bootstrap (signup → login → save session)
-python -m scripts.bootstrap_signup --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
-
-# Force new user & session
-python -m scripts.bootstrap_signup --force --random-email --name "New User" --password 'NewStrongPass!23'
+python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123" --storage "auth/storage_state.json"
 
 # Run tests
 pytest -vv
