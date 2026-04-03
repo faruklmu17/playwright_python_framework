@@ -104,3 +104,16 @@ def page(context):
         yield p
     finally:
         p.close()
+
+# --- Database & Data Validation Lifecycle ---
+
+@pytest.fixture(scope="session")
+def db_engine():
+    """
+    Spawns a mock SQLAlchemy engine structure for backend integration and DataFrame testing.
+    e.g., engine = sqlalchemy.create_engine('sqlite:///:memory:')
+    """
+    # engine = None
+    # yield engine
+    # engine.dispose()
+    yield "mock_engine_connection"

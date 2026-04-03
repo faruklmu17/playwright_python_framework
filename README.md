@@ -32,7 +32,7 @@ A modular, pytest-based **Playwright (Python)** framework for web UI testing.
    ```
    > Tip: to **watch it in a real browser**, run headed:
    > ```bash
-   > HEADLESS=false pytest -s tests/test_logged_in_session.py
+   > HEADLESS=false pytest -s tests/test_logged_in.py
    > ```
 
 5. **Run the full suite**
