@@ -22,6 +22,7 @@ A modular, pytest-based **Playwright (Python)** framework for web UI testing.
    ```
 
 3. **Bootstrap once (signup → login → save session)**
+   > **Note:** This step is recommended but not required — if `storage_state.json` is missing, pytest will automatically bootstrap the session before running any tests.
    ```bash
    python -m scripts.bootstrap_signup --name "Jane Doe" --email "jane@example.com" --password "StrongPass123"
    ```
