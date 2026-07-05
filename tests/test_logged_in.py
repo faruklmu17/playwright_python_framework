@@ -18,3 +18,13 @@ def test_logged_in_session(page: Page):
 
     print(f"\n[TEST] Verified logged-in session with title: {page.title()}")
     time.sleep(5)
+
+def test_counting_links(page: Page):
+    # Navigate directly to a page that requires you to be logged in
+    page.goto("https://faruk-hasan.com/automation/playwright-selenium-cypress-practice.html")
+    # Count the number of links on the page
+    links = page.locator("a")
+    expect(links).to_have_count(14)
+    link_count = links.count()
+    print(f"\n[TEST] Number of links on the page: {link_count}")
+    time.sleep(5)

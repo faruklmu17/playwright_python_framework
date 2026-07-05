@@ -127,6 +127,8 @@ playwright install
 Run the bootstrap script (signup → login → save session):
 ```bash
 python scripts/bootstrap_signup.py --name "Jane Doe" --email "jane@example.com" --password "StrongPass123" --storage "auth/storage_state.json"
+```bash
+python -m scripts.bootstrap_signup --name "Jane Doe" --email "test@example.com" --password "StrongPass123" --storage "auth/storage_state.json"
 ```
 This will:
 - Open the demo **Sign Up** page (`/signup.html`)  
@@ -300,3 +302,5 @@ pytest -vv --html=reports/html/report.html --self-contained-html
 ---
 
 🎉 You’re all set — the framework signs up, logs in, saves the session, and reuses it for fast, reliable tests.
+
+Watson Testing here :)
